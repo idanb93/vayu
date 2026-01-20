@@ -1,0 +1,53 @@
+services:
+  ##############################
+  # Database Container
+  ##############################
+  postgres:
+    image: postgres:latest
+    container_name: vayu-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1111
+      POSTGRES_DB: vayu-db
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - mynet
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d postgres -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ##############################
+  # # Backend Container
+  # ##############################
+  backend:
+    restart: always
+    container_name: vayu-backend
+    hostname: backend
+    environment:
+      - DATABASE_URL=postgresql://postgres:1111@postgres:5432/vayu-db?schema=public
+      - SERVER_PORT=3001
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=1111
+      - DB_NAME=vayu-db
+    build:
+      dockerfile: ./Dockerfile
+      context: ./backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - mynet
+    ports:
+      - "3001:3001"
+
+networks:
+  mynet:
+    driver: bridge
